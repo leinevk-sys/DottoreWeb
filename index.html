@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Dottore Lab // Subject Reconstruction</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --ice-light: #E8F4FA;
+    --ice-mid: #72B9EA;
+    --ice-deep: #2A75D3;
+    --lab-dark: #0D254C;
+    --chrome-light: #FFFFFF;
+    --chrome-mid: #D0E1F0;
+    --chrome-border: #8AB4D8;
+    --alert-red: #D32A52;
+    --crimson-deep: #9E1938;
+  }
+
+  * {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  input, textarea {
+    user-select: text;
+  }
+
+  body {
+    margin: 0 auto;
+    padding: 10px;
+    max-width: 420px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(160deg, #CBE5F6 0%, #E8F4FA 45%, #B8D9F0 100%);
+    background-attachment: fixed;
+    color: var(--lab-dark);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: 
+      linear-gradient(rgba(42, 117, 211, 0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(42, 117, 211, 0.07) 1px, transparent 1px);
+    background-size: 20px 20px;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .window-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.94) 0%, rgba(225,240,250,0.9) 100%);
+    border: 2px solid #FFFFFF;
+    outline: 1px solid var(--chrome-border);
+    border-radius: 14px;
+    box-shadow: 
+      0 6px 16px rgba(13, 37, 76, 0.14),
+      inset 0 2px 3px rgba(255, 255, 255, 0.9);
+    margin-bottom: 12px;
+    overflow: hidden;
+    backdrop-filter: blur(8px);
+  }
+
+  .window-header {
+    background: linear-gradient(180deg, #9AD0F5 0%, #4695E6 48%, #2A75D3 52%, #52A2F0 100%);
+    color: #FFFFFF;
+    padding: 7px 11px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(13, 37, 76, 0.6);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #1C56A3;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.8);
+  }
+
+  .window-header.crimson-header {
+    background: linear-gradient(180deg, #F08CA4 0%, #D32A52 48%, #9E1938 52%, #D94166 100%);
+    border-bottom: 1px solid #750E26;
+  }
+
+  .window-controls {
+    display: flex;
+    gap: 5px;
+  }
+
+  .win-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #FFFFFF, #9AD0F5 50%, #1C56A3 100%);
+    border: 1px solid rgba(13, 37, 76, 0.4);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+
+  .window-body {
+    padding: 10px;
+  }
+
+  .date-nav-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, #FFFFFF 0%, #DCEBF7 100%);
+    border: 1px solid #8AB4D8;
+    border-radius: 11px;
+    padding: 5px 8px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 5px rgba(13, 37, 76, 0.08), inset 0 1px 0 #FFF;
+  }
+
+  .nav-arrow-btn {
+    width: 32px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid #6E9EC7;
+    background: linear-gradient(180deg, #FFFFFF 0%, #C7E1F5 100%);
+    color: #164C96;
+    font-weight: 900;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .nav-arrow-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .date-center-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .date-main-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--lab-dark);
+  }
+
+  .date-sub-badge {
+    font-size: 9px;
+    font-weight: 800;
+    padding: 1px 7px;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #72B9EA, #2A75D3);
+    color: #FFFFFF;
+    text-transform: uppercase;
+  }
+
+  .date-sub-badge.archive-mode {
+    background: linear-gradient(180deg, #F5A623, #C97A00);
+  }
+
+  .today-jump-btn {
+    font-size: 9px;
+    font-weight: 800;
+    padding: 3px 7px;
+    border-radius: 7px;
+    border: 1px solid #2A75D3;
+    background: #FFFFFF;
+    color: #2A75D3;
+    cursor: pointer;
+    margin-left: 4px;
+  }
+
+  .split-lab-layout {
+    display: grid;
+    grid-template-columns: 132px 1fr;
+    gap: 10px;
+    align-items: start;
+    margin-bottom: 10px;
+  }
+
+  @media (max-width: 350px) {
+    .split-lab-layout {
+      grid-template-columns: 118px 1fr;
+    }
+  }
+
+  .left-anatomy-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
+
+  .anatomy-viewer {
+    position: relative;
+    width: 100%;
+    height: 185px;
+    max-height: 185px;
+    background: #FFFFFF;
+    border-radius: 12px;
+    border: 2px solid #8AB4D8;
+    box-shadow: 
+      inset 0 0 16px rgba(114, 185, 234, 0.35),
+      0 3px 8px rgba(13, 37, 76, 0.12);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 6px 24px 6px;
+  }
+
+  .anatomy-viewer::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(42, 117, 211, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(42, 117, 211, 0.06) 1px, transparent 1px);
+    background-size: 14px 14px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .anatomy-canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: relative;
+    z-index: 2;
+    filter: url(#boiling-line) drop-shadow(0 2px 6px rgba(13, 37, 76, 0.18));
+    transition: opacity 0.18s ease, transform 0.25s ease;
+  }
+
+  .anatomy-canvas.stage-pulse {
+    transform: scale(1.03);
+  }
+
+  .hud-badge {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    right: 6px;
+    background: rgba(232, 244, 250, 0.88);
+    border: 1px solid #8AB4D8;
+    border-radius: 6px;
+    padding: 2px 5px;
+    font-family: 'Courier New', monospace;
+    font-size: 9px;
+    font-weight: 800;
+    color: #164C96;
+    text-align: center;
+    z-index: 4;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  .stage-steps-indicator {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    right: 6px;
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    z-index: 4;
+  }
+
+  .step-pill {
+    font-size: 8.5px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.9);
+    border: 1px solid #99C2E6;
+    color: #4A78A6;
+    transition: all 0.2s ease;
+  }
+
+  .step-pill.active {
+    background: linear-gradient(180deg, #72B9EA 0%, #2A75D3 100%);
+    color: #FFFFFF;
+    border-color: #164C96;
+    box-shadow: 0 0 6px rgba(42, 117, 211, 0.5);
+  }
+
+  .right-tasks-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: linear-gradient(180deg, #F4F9FD 0%, #E3F0FA 100%);
+    border: 1px solid #9EC4E6;
+    border-radius: 12px;
+    padding: 7px;
+    box-shadow: inset 0 1px 2px #FFFFFF;
+  }
+
+  .tasks-table-header {
+    font-size: 10px;
+    font-weight: 800;
+    color: #1A4E8E;
+    text-transform: uppercase;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid #B5D3ED;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .progress-container {
+    width: 100%;
+    height: 20px;
+    background: linear-gradient(180deg, #B8C9D9 0%, #FFFFFF 50%, #DCE8F2 100%);
+    border-radius: 11px;
+    border: 1px solid #7399B8;
+    box-shadow: inset 0 2px 4px rgba(13, 37, 76, 0.22), 0 1px 1px #FFF;
+    padding: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 8px;
+    background: 
+      repeating-linear-gradient(
+        -45deg,
+        rgba(255, 255, 255, 0.35) 0px,
+        rgba(255, 255, 255, 0.35) 8px,
+        transparent 8px,
+        transparent 16px
+      ),
+      linear-gradient(180deg, #A4DCFF 0%, #3B8EEB 48%, #1F66C2 52%, #63B3FA 100%);
+    box-shadow: inset 0 1px 2px rgba(255,255,255,0.9), 0 0 8px rgba(42,117,211,0.5);
+    transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+  }
+
+  .task-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(180deg, #FFFFFF 0%, #EAF3FA 100%);
+    border: 1px solid #B5D1E8;
+    border-radius: 8px;
+    padding: 6px 7px;
+    margin-bottom: 5px;
+    box-shadow: 0 1px 3px rgba(13, 37, 76, 0.05), inset 0 1px 0 #FFF;
+    gap: 4px;
+  }
+
+  .task-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    cursor: pointer;
+    min-width: 0;
+  }
+
+  .glossy-checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1px solid #6E9EC7;
+    background: linear-gradient(180deg, #D5E6F5 0%, #FFFFFF 100%);
+    box-shadow: inset 0 2px 3px rgba(13, 37, 76, 0.16), 0 1px 1px #FFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 900;
+    color: transparent;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .task-item.done .glossy-checkbox {
+    background: linear-gradient(180deg, #8CD0FF 0%, #2A75D3 50%, #58AEFA 100%);
+    border-color: #164C96;
+    color: #FFFFFF;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  }
+
+  .task-item.half-done .glossy-checkbox {
+    background: linear-gradient(180deg, #B5E2FF 0%, #63AEE6 100%);
+    border-color: #3A7BB0;
+    color: #0D254C;
+  }
+
+  .task-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--lab-dark);
+    line-height: 1.2;
+    word-break: break-word;
+  }
+
+  .task-item.done .task-title {
+    text-decoration: line-through;
+    color: #6B8FAE;
+  }
+
+  .streak-badge {
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #E8F4FA, #C2E0F5);
+    border: 1px solid #8AB4D8;
+    color: #174B8A;
+    white-space: nowrap;
+  }
+
+  .mini-low-btn {
+    font-size: 9.5px;
+    font-weight: 800;
+    padding: 3px 6px;
+    border-radius: 8px;
+    border: 1px solid #7BA7CC;
+    background: linear-gradient(180deg, #FFFFFF 0%, #D2E7F7 100%);
+    color: #1E528E;
+    cursor: pointer;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .mini-low-btn.active {
+    background: linear-gradient(180deg, #72B9EA 0%, #2A75D3 100%);
+    color: #FFF;
+    border-color: #154585;
+  }
+
+  .custom-todo-row {
+    display: flex;
+    gap: 5px;
+    margin-top: 4px;
+  }
+
+  .glossy-input {
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
+    border-radius: 8px;
+    border: 1px solid #8AB4D8;
+    background: linear-gradient(180deg, #DCEAF5 0%, #FFFFFF 35%);
+    font-size: 11px;
+    color: var(--lab-dark);
+    outline: none;
+  }
+
+  .add-btn {
+    width: 30px;
+    border-radius: 8px;
+    border: 1px solid #1B57A6;
+    background: linear-gradient(180deg, #9AD0F5 0%, #2A75D3 55%, #52A2F0 100%);
+    color: #FFF;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .dual-slider-box {
+    background: linear-gradient(180deg, #F5FAFE 0%, #E3F0FA 100%);
+    border: 1px solid #A3C6E6;
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 9px;
+  }
+
+  .bio-slider-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 7px;
+  }
+
+  .bio-slider-row:last-child {
+    margin-bottom: 0;
+  }
+
+  .bio-slider-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .phys-label { color: #B81D42; }
+  .mental-label { color: #1B5EB8; }
+
+  input[type="range"].phys-range { accent-color: #D32A52; width: 100%; }
+  input[type="range"].mental-range { accent-color: #2A75D3; width: 100%; }
+
+  .coord-graph-wrapper {
+    background: #FFFFFF;
+    border: 1px solid #96BCE0;
+    border-radius: 10px;
+    padding: 6px;
+    margin-bottom: 9px;
+    box-shadow: inset 0 1px 4px rgba(13, 37, 76, 0.08);
+  }
+
+  .coord-legend {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 9.5px;
+    font-weight: 800;
+    margin-bottom: 4px;
+    padding: 0 4px;
+  }
+
+  .legend-items {
+    display: flex;
+    gap: 10px;
+  }
+
+  .leg-phys { color: #D32A52; }
+  .leg-mental { color: #2A75D3; }
+
+  #coord-canvas {
+    width: 100%;
+    height: 125px;
+    display: block;
+  }
+
+  .tags-section-title {
+    font-size: 10px;
+    font-weight: 800;
+    color: #1A4E8E;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .tags-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 9px;
+  }
+
+  .factor-chip {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 12px;
+    border: 1px solid #8AB4D8;
+    background: linear-gradient(180deg, #FFFFFF 0%, #DFEEF9 100%);
+    color: #174B8A;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .factor-chip.active {
+    background: linear-gradient(180deg, #6EB8F5 0%, #2368C4 100%);
+    color: #FFFFFF;
+    border-color: #123E7A;
+    box-shadow: 0 2px 5px rgba(35, 104, 196, 0.35);
+  }
+
+  .factor-chip.alert-chip.active {
+    background: linear-gradient(180deg, #F26B8A 0%, #B81D42 100%);
+    border-color: #7A0E28;
+  }
+
+  .review-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .review-input {
+    width: 100%;
+    padding: 7px 9px;
+    border-radius: 9px;
+    border: 1px solid #8AB4D8;
+    background: linear-gradient(180deg, #E6F2FA 0%, #FFFFFF 35%);
+    font-size: 11.5px;
+    font-family: inherit;
+    color: var(--lab-dark);
+    outline: none;
+  }
+
+  .glossy-btn {
+    width: 100%;
+    padding: 11px 16px;
+    border-radius: 22px;
+    border: 1px solid #1B57A6;
+    background: linear-gradient(180deg, #B6E3FF 0%, #52A2F0 48%, #2A75D3 52%, #6DC0FF 100%);
+    color: #FFFFFF;
+    font-weight: 800;
+    font-size: 13px;
+    text-shadow: 0 1px 2px rgba(13, 37, 76, 0.7);
+    box-shadow: 
+      0 4px 8px rgba(13, 37, 76, 0.22),
+      inset 0 1px 2px rgba(255, 255, 255, 0.95);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .glossy-btn.sleeping-mode {
+    background: linear-gradient(180deg, #9BB8FF 0%, #3E59C2 48%, #21358C 52%, #5978E8 100%);
+    border-color: #12215C;
+  }
+
+  .sleep-stats-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 8px 0 5px 0;
+  }
+
+  .sleep-avg-text {
+    font-size: 11.5px;
+    font-weight: 700;
+    color: #1E528E;
+  }
+
+  .sleep-avg-val {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--ice-deep);
+  }
+
+  .chart-box {
+    height: 115px;
+    background: linear-gradient(180deg, #E2F0FA 0%, #F7FBFE 100%);
+    border: 1px solid #B0CEE8;
+    border-radius: 10px;
+    padding: 10px 8px 5px 8px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .bar-col {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+  }
+
+  .bar-col.selected-col .bar-day {
+    background: #2A75D3;
+    color: #FFF;
+    padding: 0 4px;
+    border-radius: 4px;
+  }
+
+  .bar-track {
+    width: 100%;
+    max-width: 22px;
+    height: 75px;
+    background: rgba(138, 180, 216, 0.22);
+    border-radius: 6px;
+    display: flex;
+    align-items: flex-end;
+    padding: 1px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    width: 100%;
+    border-radius: 5px;
+    background: linear-gradient(180deg, #9EE0FF 0%, #2A75D3 60%, #52A2F0 100%);
+    transition: height 0.35s ease;
+  }
+
+  .bar-fill.low-sleep {
+    background: linear-gradient(180deg, #FF8DA6 0%, #C4254E 60%, #7A1436 100%);
+  }
+
+  .bar-val {
+    font-size: 9px;
+    font-weight: 700;
+    color: #386291;
+  }
+
+  .bar-day {
+    font-size: 9.5px;
+    font-weight: 800;
+    color: var(--lab-dark);
+  }
+
+  .slider-row {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #26548C;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    accent-color: #2A75D3;
+  }
+
+  .dottore-dock {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .dottore-avatar-box {
+    width: 155px;
+    height: 195px;
+    background: #FFFFFF;
+    border: 2px solid #72B9EA;
+    border-radius: 14px;
+    box-shadow: 
+      0 5px 12px rgba(13, 37, 76, 0.15),
+      inset 0 0 14px rgba(114, 185, 234, 0.3);
+    overflow: hidden;
+    flex-shrink: 0;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dottore-avatar-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #FFFFFF;
+    filter: sepia(100%) hue-rotate(175deg) saturate(190%) contrast(1.08);
+    transition: transform 0.12s ease;
+  }
+
+  .dottore-avatar-box.laugh-shake {
+    animation: shakeAnim 0.45s ease;
+  }
+
+  @keyframes shakeAnim {
+    0%, 100% { transform: translate(0, 0) rotate(0deg); }
+    20% { transform: translate(-2px, -3px) rotate(-1.5deg); }
+    40% { transform: translate(2px, 2px) rotate(1.5deg); }
+    60% { transform: translate(-2px, -2px) rotate(-1deg); }
+    80% { transform: translate(2px, 1px) rotate(1deg); }
+  }
+
+  .speech-bubble {
+    flex: 1;
+    background: linear-gradient(180deg, #FFFFFF 0%, #E3F2FD 100%);
+    border: 2px solid #8AB4D8;
+    border-radius: 14px;
+    padding: 12px;
+    position: relative;
+    box-shadow: 
+      0 4px 10px rgba(13, 37, 76, 0.1),
+      inset 0 2px 2px #FFFFFF;
+    font-size: 12.5px;
+    line-height: 1.42;
+    font-weight: 600;
+    color: var(--lab-dark);
+    min-height: 135px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    cursor: pointer;
+  }
+
+  .speech-bubble::before {
+    content: "";
+    position: absolute;
+    left: -9px;
+    top: 50px;
+    width: 14px;
+    height: 14px;
+    background: #EFF7FD;
+    border-left: 2px solid #8AB4D8;
+    border-bottom: 2px solid #8AB4D8;
+    transform: rotate(45deg);
+  }
+
+  .tap-hint {
+    font-size: 10px;
+    color: #5485B8;
+    text-align: right;
+    margin-top: 6px;
+    font-style: italic;
+  }
+
+  .cycle-status-banner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(180deg, #FFF5F7 0%, #FFE3EA 100%);
+    border: 1px solid #E69CB0;
+    border-radius: 10px;
+    padding: 8px 10px;
+    margin-bottom: 9px;
+  }
+
+  .cycle-day-num {
+    font-size: 15px;
+    font-weight: 900;
+    color: #9E1938;
+  }
+
+  .cycle-phase-desc {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #7A1830;
+  }
+
+  .mini-calendar-strip {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    margin-bottom: 9px;
+  }
+
+  .cal-day-cell {
+    background: #FFFFFF;
+    border: 1px solid #C2D9ED;
+    border-radius: 8px;
+    padding: 5px 2px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: 800;
+  }
+
+  .cal-day-cell.active-selected {
+    outline: 2px solid #2A75D3;
+  }
+
+  .cal-day-cell.is-period {
+    background: linear-gradient(180deg, #FF9EB5 0%, #D32A52 100%);
+    color: #FFFFFF;
+    border-color: #8A112E;
+  }
+
+  .cycle-cat-group {
+    margin-bottom: 7px;
+  }
+
+  .cycle-cat-title {
+    font-size: 10px;
+    font-weight: 800;
+    color: #7A1830;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .cycle-chips-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .cycle-chip {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 4px 7px;
+    border-radius: 10px;
+    border: 1px solid #D99AA9;
+    background: #FFFFFF;
+    color: #6E142A;
+    cursor: pointer;
+  }
+
+  .cycle-chip.active {
+    background: linear-gradient(180deg, #E84A70 0%, #A8183B 100%);
+    color: #FFFFFF;
+    border-color: #6B0B22;
+  }
+</style>
+</head>
+<body>
+
+<svg style="position:absolute; width:0; height:0;">
+  <filter id="boiling-line">
+    <feTurbulence id="turb" type="fractalNoise" baseFrequency="0.02" numOctaves="1" result="noise" seed="0" />
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.4" xChannelSelector="R" yChannelSelector="G" />
+  </filter>
+</svg>
+
+<!-- 0. НАВИГАЦИЯ ПО ДАТАМ (ПЕРЕКЛЮЧЕНИЕ НА ПРОШЛЫЕ ДНИ) -->
+<div class="date-nav-bar">
+  <button class="nav-arrow-btn" onclick="shiftSelectedDate(-1)">◀</button>
+  <div class="date-center-info">
+    <div style="display:flex; align-items:center;">
+      <span id="selected-date-title" class="date-main-label">Сегодня</span>
+      <button id="jump-today-btn" class="today-jump-btn" style="display:none;" onclick="jumpToToday()">К сегодня</button>
+    </div>
+    <span id="date-mode-badge" class="date-sub-badge">АКТИВНЫЙ ПРОТОКОЛ</span>
+  </div>
+  <button id="next-day-btn" class="nav-arrow-btn" onclick="shiftSelectedDate(1)">▶</button>
+</div>
+
+<!-- 1. ГЛАВНЫЙ ТЕРМИНАЛ: АНАТОМИЯ + ДЕЛА -->
+<div class="window-card">
+  <div class="window-header">
+    <span id="recon-status">SUBJECT RECONSTRUCTION // PROGRESS: 0%</span>
+    <div class="window-controls">
+      <div class="win-dot"></div>
+      <div class="win-dot"></div>
+    </div>
+  </div>
+  <div class="window-body">
+    <div class="split-lab-layout">
+      <div class="left-anatomy-col">
+        <div class="anatomy-viewer">
+          <div id="stage-label" class="hud-badge">ЭТАП 1 // КАРКАС</div>
+          <canvas id="anatomy-canvas" class="anatomy-canvas" width="600" height="800"></canvas>
+          <div class="stage-steps-indicator">
+            <span id="pill-1" class="step-pill active">I</span>
+            <span id="pill-2" class="step-pill">II</span>
+            <span id="pill-3" class="step-pill">III</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="right-tasks-col">
+        <div>
+          <div class="tasks-table-header">
+            <span>Протокол дня</span>
+            <span id="tasks-counter-label">0/4</span>
+          </div>
+          <div id="tasks-container"></div>
+        </div>
+
+        <div class="custom-todo-row">
+          <input type="text" id="custom-task-input" class="glossy-input" placeholder="+ задача...">
+          <button class="add-btn" onclick="addCustomTask()">+</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="progress-container">
+      <div id="progress-fill" class="progress-fill"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. БИОМЕТРИЯ СОСТОЯНИЯ, КООРДИНАТНЫЙ ГРАФИК, ТЕГИ И ОТЗЫВ ДНЯ -->
+<div class="window-card">
+  <div class="window-header">
+    <span>BIOMETRIC TELEMETRY // TONE & ANAMNESIS</span>
+    <div class="window-controls"><div class="win-dot"></div></div>
+  </div>
+  <div class="window-body">
+    <div class="dual-slider-box">
+      <div class="bio-slider-row">
+        <div class="bio-slider-label phys-label">
+          <span>🔴 Физический тонус (тело / силы):</span>
+          <span id="phys-val-label">3 / 5</span>
+        </div>
+        <input type="range" id="phys-slider" class="phys-range" min="1" max="5" step="1" value="3" oninput="updateBioState('phys', this.value)">
+      </div>
+
+      <div class="bio-slider-row">
+        <div class="bio-slider-label mental-label">
+          <span>🔵 Моральный ресурс (психика / фокус):</span>
+          <span id="mental-val-label">3 / 5</span>
+        </div>
+        <input type="range" id="mental-slider" class="mental-range" min="1" max="5" step="1" value="3" oninput="updateBioState('mental', this.value)">
+      </div>
+    </div>
+
+    <!-- КООРДИНАТНОЕ ПОЛЕ С ДВУМЯ ФУНКЦИЯМИ (КРАСНАЯ И СИНЯЯ ЛИНИИ) -->
+    <div class="coord-graph-wrapper">
+      <div class="coord-legend">
+        <span>КООРДИНАТНАЯ ОСЬ (7 ДН.)</span>
+        <div class="legend-items">
+          <span class="leg-phys">● f(x) Физика</span>
+          <span class="leg-mental">● g(x) Мораль</span>
+        </div>
+      </div>
+      <canvas id="coord-canvas" width="370" height="125"></canvas>
+    </div>
+
+    <div class="tags-section-title">Факторы влияния и ЖКТ / самочувствие:</div>
+    <div id="factors-container" class="tags-grid"></div>
+
+    <div class="review-box">
+      <div class="tags-section-title">Отзыв / самые яркие события за день:</div>
+      <input type="text" id="day-review-input" class="review-input" placeholder="Что запомнилось за день? (можно оставить пустым)" oninput="updateDayReview(this.value)">
+    </div>
+  </div>
+</div>
+
+<!-- 3. ТРЕКЕР СНА И НЕДЕЛЬНЫЙ ГРАФИК -->
+<div class="window-card">
+  <div class="window-header">
+    <span>SOMNOLOGY LOG // WEEKLY TELEMETRY</span>
+    <div class="window-controls"><div class="win-dot"></div></div>
+  </div>
+  <div class="window-body">
+    <button id="sleep-toggle-btn" class="glossy-btn" onclick="toggleSleepTimer()">
+      🌙 Ложусь спать
+    </button>
+
+    <div class="sleep-stats-header">
+      <span class="sleep-avg-text">Среднее время сна за 7 дней:</span>
+      <span id="weekly-avg-val" class="sleep-avg-val">0.0 ч</span>
+    </div>
+
+    <div id="sleep-chart" class="chart-box"></div>
+
+    <div class="slider-row">
+      <span>Коррекция сна (<span id="sleep-target-day-lbl">сегодня</span>): <strong id="slider-val-label">7.5 ч</strong></span>
+      <input type="range" id="sleep-slider" min="0" max="12" step="0.5" value="7.5" oninput="manualSleepAdjust(this.value)">
+    </div>
+  </div>
+</div>
+
+<!-- 4. КРУПНЫЙ ИНТЕРАКТИВНЫЙ ДОТТОРЕ -->
+<div class="window-card">
+  <div class="window-header">
+    <span>LAB TERMINAL // ZANDIK LIVE FEED</span>
+    <div class="window-controls"><div class="win-dot"></div></div>
+  </div>
+  <div class="window-body">
+    <div class="dottore-dock">
+      <div id="dottore-box" class="dottore-avatar-box" onclick="triggerDottoreInteract()">
+        <img id="dottore-img" src="dottore_idle.png" alt="Dottore">
+      </div>
+      <div class="speech-bubble" onclick="triggerDottoreInteract()">
+        <div id="dottore-speech">
+          Показатели загружены. Посмотрим, насколько добросовестно ты соберешь себя сегодня.
+        </div>
+        <div class="tap-hint">Нажми на портрет для отклика</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. ОТДЕЛЬНАЯ ВКЛАДКА С МЕСЯЧНЫМИ (НИЖЕ ДОТТОРЕ, КАК ВО FLO) -->
+<div class="window-card">
+  <div class="window-header crimson-header">
+    <span>ENDOCRINE & CYCLE MONITOR // FLO-PROTOCOL</span>
+    <div class="window-controls"><div class="win-dot"></div></div>
+  </div>
+  <div class="window-body">
+    <div class="cycle-status-banner">
+      <div>
+        <div id="cycle-day-title" class="cycle-day-num">День цикла: —</div>
+        <div id="cycle-phase-subtitle" class="cycle-phase-desc">Отметь начало менструации для расчета</div>
+      </div>
+      <button id="period-toggle-btn" class="mini-low-btn" style="border-color:#B81D42; color:#9E1938; padding:6px 9px;" onclick="togglePeriodDay()">
+        🩸 Отметить месячные
+      </button>
+    </div>
+
+    <div id="cycle-week-strip" class="mini-calendar-strip"></div>
+
+    <div class="cycle-cat-group">
+      <div class="cycle-cat-title">Настроение:</div>
+      <div id="cycle-mood-chips" class="cycle-chips-row"></div>
+    </div>
+
+    <div class="cycle-cat-group">
+      <div class="cycle-cat-title">Физическая активность:</div>
+      <div id="cycle-activity-chips" class="cycle-chips-row"></div>
+    </div>
+
+    <div class="cycle-cat-group">
+      <div class="cycle-cat-title">Пищеварение и ЖКТ:</div>
+      <div id="cycle-digestion-chips" class="cycle-chips-row"></div>
+    </div>
+
+    <div class="cycle-cat-group" style="margin-bottom:0;">
+      <div class="cycle-cat-title">Симптомы:</div>
+      <div id="cycle-symptoms-chips" class="cycle-chips-row"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 6. ОТПРАВКА ОТЧЕТА БОТУ -->
+<button class="glossy-btn" style="margin-bottom: 20px;" onclick="sendReportToBot()">
+  📤 Отправить данные выбранного дня Дотторе
+</button>
+
+<script>
+  const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  if (tg) {
+    tg.expand();
+    tg.ready();
+  }
+
+  function toDateKey(dateObj) {
+    const y = dateObj.getFullYear();
+    const m = String(dateObj.getMonth() + 1).padStart(2, "0");
+    const d = String(dateObj.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function parseDateKey(key) {
+    const [y, m, d] = key.split("-").map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  const TODAY_KEY = toDateKey(new Date());
+  let selectedDateKey = TODAY_KEY;
+
+  const DAYS_RU_SHORT = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+  const MONTHS_RU = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+
+  const STAGE_KEYS = ["stage_0", "stage_1", "stage_2", "stage_3", "stage_4"];
+  const loadedImages = {};
+  const canvas = document.getElementById("anatomy-canvas");
+  const ctx = canvas.getContext("2d");
+
+  function loadStageWithFallback(baseName) {
+    const candidates = [baseName + ".png", baseName + ".jpg", baseName + ".PNG", baseName + ".JPG"];
+    let idx = 0;
+    function tryNext() {
+      if (idx >= candidates.length) return;
+      const img = new Image();
+      img.onload = () => {
+        loadedImages[baseName] = img;
+        if (baseName === currentDisplayedKey) drawWhiteBgArt(baseName);
+      };
+      img.onerror = () => { idx++; tryNext(); };
+      img.src = candidates[idx];
+    }
+    tryNext();
+  }
+
+  function preloadAndCleanImages() {
+    STAGE_KEYS.forEach(key => loadStageWithFallback(key));
+  }
+
+  function drawWhiteBgArt(baseKey) {
+    const img = loadedImages[baseKey];
+    if (!img) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+
+    if (baseKey !== "stage_0") {
+      try {
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const data = imgData.data;
+        const visited = new Uint8Array(w * h);
+        const stack = [0, w - 1, (h - 1) * w, (h - 1) * w + w - 1];
+        while (stack.length > 0) {
+          const idx = stack.pop();
+          if (visited[idx]) continue;
+          visited[idx] = 1;
+          const p = idx * 4;
+          if (data[p] < 28 && data[p + 1] < 28 && data[p + 2] < 28) {
+            data[p] = 255; data[p + 1] = 255; data[p + 2] = 255;
+            const x = idx % w;
+            const y = (idx / w) | 0;
+            if (x > 0 && !visited[idx - 1]) stack.push(idx - 1);
+            if (x < w - 1 && !visited[idx + 1]) stack.push(idx + 1);
+            if (y > 0 && !visited[idx - w]) stack.push(idx - w);
+            if (y < h - 1 && !visited[idx + w]) stack.push(idx + w);
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+      } catch (e) {}
+    }
+  }
+
+  const FACTOR_OPTIONS = [
+    { id: "headache", label: "Головная боль / Спазм", alert: true },
+    { id: "uni_overload", label: "Перегруз в унике", alert: false },
+    { id: "caffeine", label: "Кофеин / Энергетик", alert: false },
+    { id: "hyperfocus", label: "Гиперфокус (арт/код)", alert: false },
+    { id: "insomnia", label: "Бессонница", alert: true },
+    { id: "gi_spasm", label: "Спазмы ЖКТ / Диарея", alert: true },
+    { id: "nausea", label: "Тошнота / Нет аппетита", alert: true }
+  ];
+
+  const CYCLE_OPTIONS = {
+    mood: ["Спокойствие", "Апатия", "Раздражительность", "Тревога", "Перепады"],
+    activity: ["Без нагрузки", "Ходьба / Уник", "Растяжка", "Тренировка"],
+    digestion: ["Норма", "Вздутие", "Спазмы", "Диарея", "Тошнота"],
+    symptoms: ["Тянет низ живота", "Мигрень", "Отеки", "Слабость", "Спина/поясница", "Чисто"]
+  };
+
+  function createEmptyDayRecord() {
+    return {
+      tasks: { pills: false, teeth_am: false, teeth_pm: false, shower: 0 },
+      customTasks: [],
+      sleepHours: 7.5,
+      physState: 3,
+      mentalState: 3,
+      factors: [],
+      review: "",
+      cycle: {
+        isPeriod: false,
+        mood: [],
+        activity: [],
+        digestion: [],
+        symptoms: []
+      }
+    };
+  }
+
+  let appStore = JSON.parse(localStorage.getItem("dottore_lab_store_v3")) || {
+    sleepStart: null,
+    cycleLength: 28,
+    days: {}
+  };
+
+  function getDayRecord(dateKey) {
+    if (!appStore.days[dateKey]) {
+      appStore.days[dateKey] = createEmptyDayRecord();
+    }
+    const rec = appStore.days[dateKey];
+    if (!rec.cycle) {
+      rec.cycle = { isPeriod: false, mood: [], activity: [], digestion: [], symptoms: [] };
+    }
+    if (!rec.factors) rec.factors = [];
+    if (rec.physState === undefined) rec.physState = 3;
+    if (rec.mentalState === undefined) rec.mentalState = 3;
+    if (rec.review === undefined) rec.review = "";
+    return rec;
+  }
+
+  function saveStore() {
+    localStorage.setItem("dottore_lab_store_v3", JSON.stringify(appStore));
+  }
+
+  function calculatePillsStreak(upToDateKey) {
+    let streak = 0;
+    let cursor = parseDateKey(upToDateKey);
+    if (!getDayRecord(toDateKey(cursor)).tasks.pills && upToDateKey === TODAY_KEY) {
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    while (true) {
+      const k = toDateKey(cursor);
+      const rec = appStore.days[k];
+      if (rec && rec.tasks && rec.tasks.pills) {
+        streak++;
+        cursor.setDate(cursor.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
+  function shiftSelectedDate(delta) {
+    hapticLight();
+    const d = parseDateKey(selectedDateKey);
+    d.setDate(d.getDate() + delta);
+    const nextKey = toDateKey(d);
+    if (nextKey > TODAY_KEY) return;
+    selectedDateKey = nextKey;
+    renderAll();
+  }
+
+  function jumpToToday() {
+    hapticLight();
+    selectedDateKey = TODAY_KEY;
+    renderAll();
+  }
+
+  function renderDateHeader() {
+    const d = parseDateKey(selectedDateKey);
+    const dayName = DAYS_RU_SHORT[d.getDay()];
+    const formatted = `${d.getDate()} ${MONTHS_RU[d.getMonth()]} (${dayName})`;
+    const isToday = selectedDateKey === TODAY_KEY;
+
+    document.getElementById("selected-date-title").innerText = isToday ? `Сегодня, ${formatted}` : formatted;
+    document.getElementById("next-day-btn").disabled = isToday;
+    document.getElementById("jump-today-btn").style.display = isToday ? "none" : "inline-block";
+
+    const badge = document.getElementById("date-mode-badge");
+    if (isToday) {
+      badge.innerText = "АКТИВНЫЙ ПРОТОКОЛ";
+      badge.classList.remove("archive-mode");
+    } else {
+      badge.innerText = "АРХИВ / РЕДАКТИРОВАНИЕ ДНЯ";
+      badge.classList.add("archive-mode");
+    }
+    document.getElementById("sleep-target-day-lbl").innerText = isToday ? "сегодня" : formatted;
+  }
+
+  let seedCounter = 0;
+  setInterval(() => {
+    seedCounter = (seedCounter + 1) % 10;
+    const turb = document.getElementById("turb");
+    if (turb) turb.setAttribute("seed", seedCounter);
+  }, 300);
+
+  let currentMainStage = 1;
+  let currentDisplayedKey = "stage_0";
+  let animTimer = null;
+
+  function playStageTransition(targetMainStage) {
+    if (animTimer) clearTimeout(animTimer);
+
+    document.getElementById("pill-1").classList.toggle("active", targetMainStage === 1);
+    document.getElementById("pill-2").classList.toggle("active", targetMainStage === 2);
+    document.getElementById("pill-3").classList.toggle("active", targetMainStage === 3);
+
+    const labelEl = document.getElementById("stage-label");
+    if (targetMainStage === 1) labelEl.innerText = "ЭТАП 1 // КАРКАС";
+    if (targetMainStage === 2) labelEl.innerText = "ЭТАП 2 // МЫШЦЫ";
+    if (targetMainStage === 3) labelEl.innerText = "ЭТАП 3 // СИНТЕЗ";
+
+    const finalKey = targetMainStage === 1 ? "stage_0" : (targetMainStage === 2 ? "stage_2" : "stage_4");
+
+    if (targetMainStage === currentMainStage) {
+      currentDisplayedKey = finalKey;
+      drawWhiteBgArt(finalKey);
+      return;
+    }
+
+    let intermediateKey = "stage_1";
+    if ((currentMainStage === 2 && targetMainStage === 3) || (currentMainStage === 3 && targetMainStage === 2)) {
+      intermediateKey = "stage_3";
+    } else if (targetMainStage === 3) {
+      intermediateKey = "stage_3";
+    }
+
+    currentMainStage = targetMainStage;
+    canvas.classList.add("stage-pulse");
+    currentDisplayedKey = intermediateKey;
+    drawWhiteBgArt(intermediateKey);
+
+    animTimer = setTimeout(() => {
+      currentDisplayedKey = finalKey;
+      drawWhiteBgArt(finalKey);
+      canvas.classList.remove("stage-pulse");
+    }, 420);
+  }
+
+  function computeDayProgress(rec) {
+    let totalPoints = 4 + rec.customTasks.length;
+    let earnedPoints = 0;
+    if (rec.tasks.pills) earnedPoints += 1;
+    if (rec.tasks.teeth_am) earnedPoints += 1;
+    if (rec.tasks.teeth_pm) earnedPoints += 1;
+    earnedPoints += Number(rec.tasks.shower || 0);
+    rec.customTasks.forEach(t => { if (t.done) earnedPoints += 1; });
+    const percent = Math.min(100, Math.round((earnedPoints / totalPoints) * 100));
+    return { earnedPoints, totalPoints, percent };
+  }
+
+  function updateAnatomyAndProgress() {
+    const rec = getDayRecord(selectedDateKey);
+    const { earnedPoints, totalPoints, percent } = computeDayProgress(rec);
+
+    document.getElementById("recon-status").innerText = `SUBJECT RECONSTRUCTION // PROGRESS: ${percent}%`;
+    document.getElementById("progress-fill").style.width = `${percent}%`;
+    document.getElementById("tasks-counter-label").innerText = `${earnedPoints}/${totalPoints}`;
+
+    let targetStage = 1;
+    if (percent <= 35) targetStage = 1;
+    else if (percent < 95) targetStage = 2;
+    else targetStage = 3;
+
+    playStageTransition(targetStage);
+  }
+
+  setInterval(() => {
+    if (currentMainStage === 2 && loadedImages["stage_1"]) {
+      drawWhiteBgArt("stage_1");
+      setTimeout(() => drawWhiteBgArt("stage_2"), 260);
+    } else if (currentMainStage === 3 && loadedImages["stage_3"]) {
+      drawWhiteBgArt("stage_3");
+      setTimeout(() => drawWhiteBgArt("stage_4"), 260);
+    }
+  }, 7000);
+
+  function renderTasks() {
+    const rec = getDayRecord(selectedDateKey);
+    const container = document.getElementById("tasks-container");
+    const showerDoneClass = rec.tasks.shower === 1 ? "done" : (rec.tasks.shower === 0.5 ? "half-done" : "");
+    const showerSymbol = rec.tasks.shower === 1 ? "✓" : (rec.tasks.shower === 0.5 ? "½" : "");
+    const streak = calculatePillsStreak(selectedDateKey);
+
+    let html = `
+      <div class="task-item ${rec.tasks.pills ? 'done' : ''}">
+        <div class="task-left" onclick="toggleTask('pills')">
+          <div class="glossy-checkbox">${rec.tasks.pills ? '✓' : ''}</div>
+          <span class="task-title">💊 Таблетки</span>
+        </div>
+        <span class="streak-badge">🔥${streak}д</span>
+      </div>
+
+      <div class="task-item ${rec.tasks.teeth_am ? 'done' : ''}">
+        <div class="task-left" onclick="toggleTask('teeth_am')">
+          <div class="glossy-checkbox">${rec.tasks.teeth_am ? '✓' : ''}</div>
+          <span class="task-title">🦷 Зубы (Утро)</span>
+        </div>
+      </div>
+
+      <div class="task-item ${rec.tasks.teeth_pm ? 'done' : ''}">
+        <div class="task-left" onclick="toggleTask('teeth_pm')">
+          <div class="glossy-checkbox">${rec.tasks.teeth_pm ? '✓' : ''}</div>
+          <span class="task-title">🦷 Зубы (Вечер)</span>
+        </div>
+      </div>
+
+      <div class="task-item ${showerDoneClass}">
+        <div class="task-left" onclick="toggleShowerFull()">
+          <div class="glossy-checkbox">${showerSymbol}</div>
+          <span class="task-title">🚿 Душ</span>
+        </div>
+        <button class="mini-low-btn ${rec.tasks.shower === 0.5 ? 'active' : ''}" onclick="toggleShowerMinimum()">
+          50%
+        </button>
+      </div>
+    `;
+
+    rec.customTasks.forEach((task, idx) => {
+      html += `
+        <div class="task-item ${task.done ? 'done' : ''}">
+          <div class="task-left" onclick="toggleCustomTask(${idx})">
+            <div class="glossy-checkbox">${task.done ? '✓' : ''}</div>
+            <span class="task-title">🧪 ${task.text}</span>
+          </div>
+          <button class="mini-low-btn" onclick="removeCustomTask(${idx})">✕</button>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+    updateAnatomyAndProgress();
+  }
+
+  function hapticLight() {
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("light");
+  }
+
+  function toggleTask(key) {
+    hapticLight();
+    const rec = getDayRecord(selectedDateKey);
+    rec.tasks[key] = !rec.tasks[key];
+    saveStore();
+    renderTasks();
+  }
+
+  function toggleShowerFull() {
+    hapticLight();
+    const rec = getDayRecord(selectedDateKey);
+    rec.tasks.shower = rec.tasks.shower === 1 ? 0 : 1;
+    saveStore();
+    renderTasks();
+  }
+
+  function toggleShowerMinimum() {
+    hapticLight();
+    const rec = getDayRecord(selectedDateKey);
+    rec.tasks.shower = rec.tasks.shower === 0.5 ? 0 : 0.5;
+    saveStore();
+    renderTasks();
+    document.getElementById("dottore-speech").innerText =
+      "Режим энергосбережения зафиксирован. Ополоснуться — уже лучше, чем обнулить статистику. Засчитываю половину.";
+  }
+
+  function addCustomTask() {
+    const input = document.getElementById("custom-task-input");
+    const text = input.value.trim();
+    if (!text) return;
+    const rec = getDayRecord(selectedDateKey);
+    if (rec.customTasks.length >= 2) {
+      document.getElementById("dottore-speech").innerText =
+        "Не перегружай дневной протокол. Двух дополнительных пунктов вполне достаточно.";
+      return;
+    }
+    rec.customTasks.push({ text, done: false });
+    input.value = "";
+    saveStore();
+    renderTasks();
+  }
+
+  function toggleCustomTask(idx) {
+    hapticLight();
+    const rec = getDayRecord(selectedDateKey);
+    rec.customTasks[idx].done = !rec.customTasks[idx].done;
+    saveStore();
+    renderTasks();
+  }
+
+  function removeCustomTask(idx) {
+    const rec = getDayRecord(selectedDateKey);
+    rec.customTasks.splice(idx, 1);
+    saveStore();
+    renderTasks();
+  }
+
+  function getLast7DaysKeys() {
+    const keys = [];
+    const base = parseDateKey(selectedDateKey);
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(base);
+      d.setDate(d.getDate() - i);
+      keys.push(toDateKey(d));
+    }
+    return keys;
+  }
+
+  function drawCoordinateGraph() {
+    const c = document.getElementById("coord-canvas");
+    const gctx = c.getContext("2d");
+    const w = c.width;
+    const h = c.height;
+
+    gctx.clearRect(0, 0, w, h);
+
+    const padL = 24;
+    const padR = 14;
+    const padT = 12;
+    const padB = 20;
+    const plotW = w - padL - padR;
+    const plotH = h - padT - padB;
+
+    gctx.strokeStyle = "rgba(114, 185, 234, 0.25)";
+    gctx.lineWidth = 1;
+    gctx.font = "bold 9px Courier New";
+    gctx.fillStyle = "#4A78A6";
+
+    for (let val = 1; val <= 5; val++) {
+      const y = padT + plotH - ((val - 1) / 4) * plotH;
+      gctx.beginPath();
+      gctx.moveTo(padL, y);
+      gctx.lineTo(w - padR, y);
+      gctx.stroke();
+      gctx.fillText(String(val), 8, y + 3);
+    }
+
+    gctx.strokeStyle = "#5A8BB8";
+    gctx.lineWidth = 1.5;
+    gctx.beginPath();
+    gctx.moveTo(padL, padT - 4);
+    gctx.lineTo(padL, padT + plotH);
+    gctx.lineTo(w - padR + 4, padT + plotH);
+    gctx.stroke();
+
+    const keys = getLast7DaysKeys();
+    const physPts = [];
+    const mentalPts = [];
+
+    keys.forEach((k, i) => {
+      const rec = getDayRecord(k);
+      const x = padL + (i / 6) * plotW;
+      const yPhys = padT + plotH - ((rec.physState - 1) / 4) * plotH;
+      const yMental = padT + plotH - ((rec.mentalState - 1) / 4) * plotH;
+
+      physPts.push({ x, y: yPhys });
+      mentalPts.push({ x, y: yMental });
+
+      const dObj = parseDateKey(k);
+      const lbl = DAYS_RU_SHORT[dObj.getDay()];
+      gctx.fillStyle = k === selectedDateKey ? "#D32A52" : "#164C96";
+      gctx.fillText(lbl, x - 6, h - 5);
+    });
+
+    function plotCurve(pts, strokeColor, glowColor) {
+      gctx.save();
+      gctx.strokeStyle = strokeColor;
+      gctx.lineWidth = 2.6;
+      gctx.shadowColor = glowColor;
+      gctx.shadowBlur = 5;
+      gctx.beginPath();
+      pts.forEach((p, idx) => {
+        if (idx === 0) gctx.moveTo(p.x, p.y);
+        else gctx.lineTo(p.x, p.y);
+      });
+      gctx.stroke();
+      gctx.restore();
+
+      pts.forEach((p, idx) => {
+        gctx.fillStyle = idx === 6 ? "#FFFFFF" : strokeColor;
+        gctx.strokeStyle = strokeColor;
+        gctx.lineWidth = 2;
+        gctx.beginPath();
+        gctx.arc(p.x, p.y, idx === 6 ? 4 : 3, 0, Math.PI * 2);
+        gctx.fill();
+        gctx.stroke();
+      });
+    }
+
+    plotCurve(physPts, "#D32A52", "rgba(211, 42, 82, 0.45)");
+    plotCurve(mentalPts, "#1D70D8", "rgba(42, 117, 211, 0.45)");
+  }
+
+  function renderBiometrics() {
+    const rec = getDayRecord(selectedDateKey);
+    document.getElementById("phys-slider").value = rec.physState;
+    document.getElementById("phys-val-label").innerText = `${rec.physState} / 5`;
+
+    document.getElementById("mental-slider").value = rec.mentalState;
+    document.getElementById("mental-val-label").innerText = `${rec.mentalState} / 5`;
+
+    document.getElementById("day-review-input").value = rec.review || "";
+
+    const factorsBox = document.getElementById("factors-container");
+    factorsBox.innerHTML = FACTOR_OPTIONS.map(f => {
+      const isActive = rec.factors.includes(f.id);
+      return `<button class="factor-chip ${f.alert ? 'alert-chip' : ''} ${isActive ? 'active' : ''}" onclick="toggleFactor('${f.id}')">${f.label}</button>`;
+    }).join("");
+
+    drawCoordinateGraph();
+  }
+
+  function updateBioState(type, val) {
+    const num = parseInt(val, 10);
+    const rec = getDayRecord(selectedDateKey);
+    if (type === "phys") rec.physState = num;
+    else rec.mentalState = num;
+    saveStore();
+    renderBiometrics();
+  }
+
+  function toggleFactor(factorId) {
+    hapticLight();
+    const rec = getDayRecord(selectedDateKey);
+    const idx = rec.factors.indexOf(factorId);
+    if (idx >= 0) rec.factors.splice(idx, 1);
+    else rec.factors.push(factorId);
+    saveStore();
+    renderBiometrics();
+  }
+
+  function updateDayReview(val) {
+    const rec = getDayRecord(selectedDateKey);
+    rec.review = val;
+    saveStore();
+  }
+
+  function renderSleepUI() {
+    const btn = document.getElementById("sleep-toggle-btn");
+    if (appStore.sleepStart) {
+      btn.classList.add("sleeping-mode");
+      btn.innerHTML = "☀️ Проснулась (идет запись сна...)";
+    } else {
+      btn.classList.remove("sleeping-mode");
+      btn.innerHTML = "🌙 Ложусь спать";
+    }
+
+    const rec = getDayRecord(selectedDateKey);
+    const currentHours = rec.sleepHours ?? 0;
+    document.getElementById("sleep-slider").value = currentHours;
+    document.getElementById("slider-val-label").innerText = `${currentHours} ч`;
+
+    const keys = getLast7DaysKeys();
+    const chart = document.getElementById("sleep-chart");
+    let chartHTML = "";
+    let sum = 0;
+
+    keys.forEach(k => {
+      const dRec = getDayRecord(k);
+      const hrs = dRec.sleepHours ?? 0;
+      sum += hrs;
+      const heightPct = Math.min(100, Math.round((hrs / 12) * 100));
+      const isLow = hrs > 0 && hrs < 6;
+      const dObj = parseDateKey(k);
+      const dayLbl = DAYS_RU_SHORT[dObj.getDay()];
+      const isSel = k === selectedDateKey;
+
+      chartHTML += `
+        <div class="bar-col ${isSel ? 'selected-col' : ''}" onclick="selectDateFromBar('${k}')">
+          <span class="bar-val">${hrs}ч</span>
+          <div class="bar-track">
+            <div class="bar-fill ${isLow ? 'low-sleep' : ''}" style="height: ${heightPct}%;"></div>
+          </div>
+          <span class="bar-day">${dayLbl}</span>
+        </div>
+      `;
+    });
+
+    chart.innerHTML = chartHTML;
+    document.getElementById("weekly-avg-val").innerText = `${(sum / 7).toFixed(1)} ч`;
+  }
+
+  function selectDateFromBar(k) {
+    hapticLight();
+    selectedDateKey = k;
+    renderAll();
+  }
+
+  function toggleSleepTimer() {
+    hapticLight();
+    const now = Date.now();
+    if (!appStore.sleepStart) {
+      appStore.sleepStart = now;
+      document.getElementById("dottore-speech").innerText =
+        "Таймер запущен. Отложи телефон, фоновый шум с YouTube я учту в погрешности.";
+    } else {
+      const diffHours = (now - appStore.sleepStart) / (1000 * 60 * 60);
+      const rounded = Math.max(0.5, Math.min(12, Math.round(diffHours * 2) / 2));
+      const todayRec = getDayRecord(TODAY_KEY);
+      todayRec.sleepHours = rounded;
+      appStore.sleepStart = null;
+      selectedDateKey = TODAY_KEY;
+      document.getElementById("dottore-speech").innerText =
+        `Сон зафиксирован: ${rounded} ч. Данные внесены в телеметрию.`;
+    }
+    saveStore();
+    renderAll();
+  }
+
+  function manualSleepAdjust(val) {
+    const hours = parseFloat(val);
+    const rec = getDayRecord(selectedDateKey);
+    rec.sleepHours = hours;
+    document.getElementById("slider-val-label").innerText = `${hours} ч`;
+    saveStore();
+    renderSleepUI();
+  }
+
+  function getCycleDayNumber(targetKey) {
+    let cursor = parseDateKey(targetKey);
+    for (let i = 0; i < 45; i++) {
+      const k = toDateKey(cursor);
+      const prev = new Date(cursor);
+      prev.setDate(prev.getDate() - 1);
+      const prevK = toDateKey(prev);
+      if (getDayRecord(k).cycle.isPeriod && !getDayRecord(prevK).cycle.isPeriod) {
+        return i + 1;
+      }
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return null;
+  }
+
+  function renderCycleModule() {
+    const rec = getDayRecord(selectedDateKey);
+    const cDay = getCycleDayNumber(selectedDateKey);
+
+    const dayTitle = document.getElementById("cycle-day-title");
+    const phaseSub = document.getElementById("cycle-phase-subtitle");
+    const toggleBtn = document.getElementById("period-toggle-btn");
+
+    if (rec.cycle.isPeriod) {
+      toggleBtn.innerText = "🩸 Идут (снять)";
+      toggleBtn.style.background = "linear-gradient(180deg, #E84A70, #9E1938)";
+      toggleBtn.style.color = "#FFFFFF";
+    } else {
+      toggleBtn.innerText = "🩸 Отметить месячные";
+      toggleBtn.style.background = "";
+      toggleBtn.style.color = "#9E1938";
+    }
+
+    if (cDay) {
+      dayTitle.innerText = `День цикла: ${cDay}-й`;
+      if (rec.cycle.isPeriod || cDay <= 5) {
+        phaseSub.innerText = "Фаза менструации // Возможны спазмы и спад железа";
+      } else if (cDay <= 13) {
+        phaseSub.innerText = "Фолликулярная фаза // Рост эстрогена и когнитивного тонуса";
+      } else if (cDay <= 16) {
+        phaseSub.innerText = "Овуляторное окно // Пик гормональной активности";
+      } else {
+        phaseSub.innerText = "Лютеиновая фаза // Возможна чувствительность и ПМС";
+      }
+    } else {
+      dayTitle.innerText = "День цикла: не задан";
+      phaseSub.innerText = "Отметь дни менструации для отсчета фаз";
+    }
+
+    const strip = document.getElementById("cycle-week-strip");
+    const keys = getLast7DaysKeys();
+    strip.innerHTML = keys.map(k => {
+      const d = parseDateKey(k);
+      const dRec = getDayRecord(k);
+      const isSel = k === selectedDateKey;
+      const isPer = dRec.cycle.isPeriod;
+      return `
+        <div class="cal-day-cell ${isSel ? 'active-selected' : ''} ${isPer ? 'is-period' : ''}" onclick="selectDateFromBar('${k}')">
+          <div>${DAYS_RU_SHORT[d.getDay()]}</div>
+          <div>${d.getDate()}</div>
+        </div>
+      `;
+    }).join("");
+
+    function renderChipGroup(elId, category, items) {
+      const box = document.getElementById(elId);
+      const activeList = rec.cycle[category] || [];
+      box.innerHTML = items.map(item => {
+        const act = activeList.includes(item);
+        return `<button class="cycle-chip ${act ? 'active' : ''}" onclick="toggleCycleTag('${category}', '${item}')">${item}</button>`;
+      }).join("");
+    }
+
+    renderChipGroup("cycle-mood-chips", "mood", CYCLE_OPTIONS.mood);
+    renderChipGroup("cycle-activity-chips", "activity", CYCLE_OPTIONS.activity);
+    renderChipGroup("cycle-digestion-chips", "digestion", CYCLE_OPTIONS.digestion);
+    renderChipGroup("cycle-symptoms-chips", "symptoms", CYCLE_OPTIONS.symptoms);
+  }
+
+  function togglePeriodDay() {
+    hapticLight();
+    const rec = getDayRecord(selectedDateKey);
+    rec.cycle.isPeriod = !rec.cycle.isPeriod;
+    saveStore();
+    renderCycleModule();
+  }
+
+  function toggleCycleTag(category, item) {
+    hapticLight();
+    const rec = getDayRecord(selectedDateKey);
+    const list = rec.cycle[category];
+    const idx = list.indexOf(item);
+    if (idx >= 0) list.splice(idx, 1);
+    else list.push(item);
+    saveStore();
+    renderCycleModule();
+  }
+
+  const DOTTORE_QUOTES = [
+    "Любопытная динамика. Когда ты фиксируешь и физику, и мораль раздельно, причина просадки становится очевидной.",
+    "Если снова засидишься за полночь за отрисовкой слоев или кодом — график сна окрасится в красный. Я предупредил.",
+    "Таблетки и вода — это базовая биохимия, а не вопрос настроения. Не пропускай.",
+    "Даже если сегодня хватило ресурса только на режим «минимум» — система всё равно фиксирует прогресс.",
+    "Сборка идет по плану. Отличная детализация мышечного каркаса, между прочим.",
+    "Забавно наблюдать, как лабораторный интерфейс дисциплинирует лучше обычных будильников.",
+    "Не забудь вписать яркие события дня в отзыв — пустой архив навевает на меня научную скуку.",
+    "Все показатели в пределах нормы. Продолжай в том же темпе — результаты мне нравятся."
+  ];
+
+  let isAnimatingDottore = false;
+
+  function playLaughSound() {
+    const audio = new Audio("laugh.mp3");
+    audio.volume = 0.6;
+    audio.play().catch(() => {
+      try {
+        const ctxAudio = new (window.AudioContext || window.webkitAudioContext)();
+        [520, 680, 590].forEach((freq, i) => {
+          const osc = ctxAudio.createOscillator();
+          const gain = ctxAudio.createGain();
+          osc.type = "triangle";
+          osc.frequency.setValueAtTime(freq, ctxAudio.currentTime + i * 0.065);
+          gain.gain.setValueAtTime(0.08, ctxAudio.currentTime + i * 0.065);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctxAudio.currentTime + (i + 1) * 0.065);
+          osc.connect(gain);
+          gain.connect(ctxAudio.destination);
+          osc.start(ctxAudio.currentTime + i * 0.065);
+          osc.stop(ctxAudio.currentTime + (i + 1) * 0.065);
+        });
+      } catch (e) {}
+    });
+  }
+
+  function triggerDottoreInteract() {
+    hapticLight();
+    playLaughSound();
+
+    const box = document.getElementById("dottore-box");
+    const img = document.getElementById("dottore-img");
+
+    box.classList.remove("laugh-shake");
+    void box.offsetWidth;
+    box.classList.add("laugh-shake");
+
+    if (!isAnimatingDottore) {
+      isAnimatingDottore = true;
+      img.src = "dottore_idle1.png";
+      setTimeout(() => { img.src = "dottore_idle.png"; }, 180);
+      setTimeout(() => { img.src = "dottore_idle1.png"; }, 340);
+      setTimeout(() => {
+        img.src = "dottore_idle.png";
+        isAnimatingDottore = false;
+      }, 550);
+    }
+
+    const hour = new Date().getHours();
+    let pool = [...DOTTORE_QUOTES];
+    if (hour >= 0 && hour < 5) {
+      pool.unshift("Уже глубокая ночь. Твой циркадный ритм снова под угрозой — нажимай кнопку сна.");
+    }
+    const randomQuote = pool[Math.floor(Math.random() * pool.length)];
+    document.getElementById("dottore-speech").innerText = randomQuote;
+  }
+
+  function sendReportToBot() {
+    hapticLight();
+    const rec = getDayRecord(selectedDateKey);
+    const { percent } = computeDayProgress(rec);
+    const keys = getLast7DaysKeys();
+    const avgSleep = (keys.reduce((acc, k) => acc + (getDayRecord(k).sleepHours || 0), 0) / 7).toFixed(1);
+
+    const factorLabels = rec.factors.map(fid => {
+      const found = FACTOR_OPTIONS.find(x => x.id === fid);
+      return found ? found.label : fid;
+    });
+
+    const payload = {
+      target_date: selectedDateKey,
+      is_archive_edit: selectedDateKey !== TODAY_KEY,
+      progress: percent,
+      sleep_hours: rec.sleepHours,
+      sleep_start: appStore.sleepStart,
+      pills: rec.tasks.pills,
+      pills_streak: calculatePillsStreak(selectedDateKey),
+      teeth_am: rec.tasks.teeth_am,
+      teeth_pm: rec.tasks.teeth_pm,
+      shower_status: rec.tasks.shower === 1 ? "full" : (rec.tasks.shower === 0.5 ? "minimum" : "none"),
+      custom_tasks: rec.customTasks,
+      phys_state: rec.physState,
+      mental_state: rec.mentalState,
+      factors: factorLabels,
+      day_review: rec.review.trim(),
+      cycle: {
+        day_number: getCycleDayNumber(selectedDateKey),
+        is_period: rec.cycle.isPeriod,
+        mood: rec.cycle.mood,
+        activity: rec.cycle.activity,
+        digestion: rec.cycle.digestion,
+        symptoms: rec.cycle.symptoms
+      },
+      weekly_avg_sleep: parseFloat(avgSleep)
+    };
+
+    if (tg && tg.sendData) {
+      tg.sendData(JSON.stringify(payload));
+    } else {
+      alert("Отчет сформирован (внутри Telegram он улетит боту):\n" + JSON.stringify(payload, null, 2));
+    }
+  }
+
+  function renderAll() {
+    renderDateHeader();
+    renderTasks();
+    renderBiometrics();
+    renderSleepUI();
+    renderCycleModule();
+  }
+
+  preloadAndCleanImages();
+  renderAll();
+</script>
+</body>
+</html>
